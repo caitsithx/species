@@ -14,8 +14,8 @@ from utils import create_model
 from utils import save_weights, load_best_weights
 
 
-def train_model(model, criterion, optimizer, lr_schedule, max_num=2,
-                init_lr=0.001, num_epochs=100, data_loaders=None):
+def train_model(model, criterion, optimizer, lr_schedule, max_num=2, init_lr=0.001, num_epochs=100, data_loaders=None,
+                fine_tune=False, pseudo=False):
     train_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     since = time.time()
     best_model = model
@@ -62,7 +62,14 @@ def train_model(model, criterion, optimizer, lr_schedule, max_num=2,
 
             if phase == 'valid':
                 report.report_valid(epoch_loss, epoch_acc, running_corrects)
-                save_weights(epoch_acc, model, epoch, max_num=max_num)
+
+                if fine_tune:
+                    weight_label = 'fine_tune'
+                elif pseudo:
+                    weight_label = 'pseudo'
+                else:
+                    weight_label = 'train'
+                save_weights(epoch_acc, model, epoch, max_num=max_num, weight_label=weight_label)
             else:
                 report.report_train(epoch_loss, epoch_acc, running_corrects)
             if phase == 'valid' and epoch_acc > best_acc:
@@ -142,12 +149,12 @@ def train(model, fine_tune, pseudo, pseudo_label_file):
         data_loaders = {'train': data_loader.get_train_loader(model),
                         'valid': data_loader.get_val_loader(model)}
 
-    model = train_model(model, criterion, optimizer_ft, lr_scheduler, init_lr=init_lr, num_epochs=settings.epochs,
-                        max_num=max_num, data_loaders=data_loaders)
+    model = train_model(model, criterion, optimizer_ft, lr_scheduler, max_num=max_num, init_lr=init_lr,
+                        num_epochs=settings.epochs, data_loaders=data_loaders)
     return model
 
 
-def train_net(model_name, fine_tune, pseudo, pseudo_label_file):
+def train_net(model_name, fine_tune, pseudo, pseudo_labeling_file=None):
     print('Training {}...'.format(model_name))
     model = create_model(model_name, fine_tune=fine_tune)
     try:
@@ -156,7 +163,8 @@ def train_net(model_name, fine_tune, pseudo, pseudo_label_file):
         print('Failed to load weights')
     if not hasattr(model, 'max_num'):
         model.max_num = 2
-    train(model, fine_tune, pseudo, pseudo_label_file)
+
+    train(model, fine_tune, pseudo, pseudo_labeling_file)
 
 
 parser = argparse.ArgumentParser()
@@ -167,16 +175,16 @@ parser.add_argument("--pseudo", nargs=2, help="train model")
 args = parser.parse_args()
 if args.train:
     print('start training model')
-    mname = args.train[0]
-    train_net(mname, False, False, None)
+    model_name = args.train[0]
+    train_net(model_name, False, False, None)
 if args.fine_tune:
     print('start fine tune model')
-    mname = args.fine_tune[0]
-    train_net(mname, True, False, None)
+    model_name = args.fine_tune[0]
+    train_net(model_name, True, False, None)
 if args.pseudo:
     print('start training with pseudo labeling')
-    mname = args.pseudo[0]
+    model_name = args.pseudo[0]
     pseudo_label_file = args.pseudo[1]
-    train_net(mname, False, True, pseudo_label_file)
+    train_net(model_name, False, True, pseudo_label_file)
 
     print('done')

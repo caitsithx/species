@@ -98,6 +98,8 @@ class NormalSet(data.Dataset):
                 split_data = df_value[:split_index]
             else:
                 split_data = df_value[split_index:]
+            if utils.is_debugging():
+                split_data = df_value[:10]
             # print(split_data.shape)
             file_names = [None] * split_data.shape[0]
             labels = [None] * split_data.shape[0]
@@ -106,6 +108,7 @@ class NormalSet(data.Dataset):
                 f, invasive = line
                 file_names[index] = os.path.join(settings.TRAIN_DIR, str(f) + '.jpg')
                 labels[index] = invasive
+
             self.labels = np.array(labels, dtype=np.float32)
         else:
             file_names = [None] * df_train.values.shape[0]
@@ -286,7 +289,7 @@ def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=Tru
         batch_size = model.batch_size
 
     print("train batch_size %d " % batch_size)
-    dset = PseudoLabelSet(settings.DATA_DIR + os.sep + 'sample_submission.csv',
+    dset = PseudoLabelSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
                           settings.RESULT_DIR + os.sep + pseudo_label_file,
                           transform=data_transforms[transkey])
 
@@ -296,7 +299,7 @@ def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=Tru
     return dloader
 
 
-def copy_test_loader(model, data_set, shuffle=False):
+def copy_test_loader(model, data_set, shuffle=False, batch_size=12):
     if model.name.startswith('inception'):
         transkey = 'testv3'
     else:
@@ -328,6 +331,12 @@ def get_test_loader(model, batch_size=16, shuffle=False):
 
 
 if __name__ == '__main__':
-    dset = PseudoLabelSet(settings.DATA_DIR + os.sep + 'sample_submission.csv',
+    dset = PseudoLabelSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
                           settings.DATA_DIR + os.sep + 'sub01.csv')
-    len(dset)
+    # dset = NormalSet((settings.DATA_DIR + os.sep + 'train_labels.csv'))
+    # len(dset)
+
+    for image, label, path in dset:
+        print(image)
+        print(label)
+        print(path)

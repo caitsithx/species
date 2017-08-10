@@ -11,12 +11,12 @@ REM python train.py --fine_tune densenet169
 REM python train.py --train densenet161
 REM python train.py --fine_tune densenet161
 
-REM python train.py --pseudo resnet50 submit-20170804-095211.csv
+python train.py --pseudo resnet50 submit-20170804-095211.csv
 python train.py --pseudo inception_v3 submit-20170804-095211.csv
-REM python train.py --pseudo vgg19_bn submit-20170804-095211.csv
-REM python train.py --pseudo vgg16_bn submit-20170804-095211.csv
-REM python train.py --pseudo densenet169 submit-20170804-095211.csv
-REM python train.py --pseudo densenet121 submit-20170804-095211.csv
+python train.py --pseudo vgg19_bn submit-20170804-095211.csv
+python train.py --pseudo vgg16_bn submit-20170804-095211.csv
+python train.py --pseudo densenet169 submit-20170804-095211.csv
+python train.py --pseudo densenet121 submit-20170804-095211.csv
 python train.py --pseudo densenet201 submit-20170804-095211.csv
 python train.py --pseudo resnet101 submit-20170804-095211.csv
 python train.py --pseudo resnet152 submit-20170804-095211.csv

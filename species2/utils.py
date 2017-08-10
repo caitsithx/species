@@ -38,12 +38,15 @@ def get_acc_from_w_filename(filename):
 
 
 def load_best_weights(model):
-    w_files = glob.glob(os.path.join(MODEL_DIR, model.name) + '_*.pth')
+    w_files = glob.glob(os.path.join(MODEL_DIR, model.name) + '*.pth')
     max_acc = 0
     best_file = None
     for w_file in w_files:
         try:
-            stracc = w_file.split('_')[-2]
+            parts = w_file.split('_')
+            if len(parts) < 4:
+                parts = w_file.split('-')
+            stracc = parts[-2]
             acc = float(stracc)
             if acc > max_acc:
                 best_file = w_file
@@ -56,9 +59,9 @@ def load_best_weights(model):
         model.load_state_dict(torch.load(best_file))
 
 
-def save_weights(acc, model, epoch, max_num=2):
+def save_weights(acc, model, epoch, max_num=2, weight_label=''):
     print("save_weights")
-    f_name = '{}_{}_{:.5f}_.pth'.format(model.name, epoch, acc)
+    f_name = '{}-{}-{:.5f}-{}.pth'.format(model.name, epoch, acc, weight_label)
     w_file_path = os.path.join(MODEL_DIR, f_name)
     if len(w_files_training) < max_num:
         w_files_training.append((acc, w_file_path))
