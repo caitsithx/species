@@ -299,31 +299,22 @@ def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=Tru
     return dloader
 
 
-def copy_test_loader(model, data_set, shuffle=False, batch_size=12):
-    if model.name.startswith('inception'):
-        transkey = 'testv3'
+def copy_test_loader(model, data_set, shuffle=False, batch_size=12, tta=False):
+    if tta:
+        print("using TTA.")
+        if model.name.startswith('inception'):
+            transform_key = 'trainv3'
+        else:
+            transform_key = 'train'
     else:
-        transkey = 'test'
+        if model.name.startswith('inception'):
+            transform_key = 'testv3'
+        else:
+            transform_key = 'test'
     if hasattr(model, 'batch_size'):
         batch_size = model.batch_size
 
-    dset = CopySet(data_set, transform=data_transforms[transkey])
-    dloader = torch.utils.data.DataLoader(dset, batch_size=batch_size,
-                                          shuffle=shuffle)
-    dloader.num = dset.num
-    return dloader
-
-
-def get_test_loader(model, batch_size=16, shuffle=False):
-    if model.name.startswith('inception'):
-        transkey = 'testv3'
-    else:
-        transkey = 'test'
-    if hasattr(model, 'batch_size'):
-        batch_size = model.batch_size
-
-    dset = NormalSet(settings.DATA_DIR + os.sep + 'sample_submission.csv', has_label=False,
-                     transform=data_transforms[transkey])
+    dset = CopySet(data_set, transform=data_transforms[transform_key])
     dloader = torch.utils.data.DataLoader(dset, batch_size=batch_size,
                                           shuffle=shuffle)
     dloader.num = dset.num

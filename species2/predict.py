@@ -23,22 +23,20 @@ w_file_matcher = ['dense161*pth', 'dense201*pth', 'dense169*pth', 'dense121*pth'
                   'res50*pth', 'res101*pth', 'res152*pth', 'vgg16*pth', 'vgg19*pth']
 
 
-def make_preds(net, test_set):
-    loader = data_loader.copy_test_loader(net, test_set)
+def make_preds(net, loader):
     preds = []
     m = nn.Softmax()
     net.eval()
     for (img, _) in tqdm.tqdm(loader):
         inputs = Variable(img.cuda())
         outputs = net(inputs)
-        # pred = m(outputs).data.cpu().tolist()
         pred = outputs.data.cpu().tolist()
         for p in pred:
             preds.append(p)
     return preds
 
 
-def ensemble():
+def ensemble(tta=False):
     preds_raw = []
 
     w_files = glob.glob(settings.MODEL_DIR + os.sep + "*.pth")
@@ -65,13 +63,19 @@ def ensemble():
     for model_name, weight_files in weights.items():
         for weight_file in weight_files:
             full_w_file = settings.MODEL_DIR + os.sep + weight_file
-            print(full_w_file)
+            print("using saved weights: %s" % full_w_file)
             model = create_model(model_name, pre_trained=False)
             model.load_state_dict(torch.load(full_w_file))
 
-            pred = np.array(make_preds(model, test_set))
-            # print(pred[:100])
-            preds_raw.append(pred)
+            rounds = 1
+            if tta:
+                rounds = 10
+
+            loader = data_loader.copy_test_loader(model, test_set, tta=True)
+
+            for index in range(rounds):
+                pred = np.array(make_preds(model, loader))
+                preds_raw.append(pred)
             del model
 
     save_array(PRED_FILE_RAW, preds_raw)
@@ -97,12 +101,16 @@ def submit(filename):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ens", action='store_true', help="ensemble predict")
+parser.add_argument("--ens", action='store_true', nargs=1, help="ensemble predict")
+parser.add_argument("--tta", action='store_true', nargs=1, help="ensemble predict")
 parser.add_argument("--sub", action='store_true', help="generate submission file")
 
 args = parser.parse_args()
 if args.ens:
     ensemble()
+    print('done')
+if args.tta:
+    ensemble(True)
     print('done')
 if args.sub:
     print('generating submision file...')
