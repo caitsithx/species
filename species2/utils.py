@@ -29,12 +29,22 @@ def is_debugging():
     return False
 
 
-def get_acc_from_w_filename(filename):
-    try:
-        stracc = filename.split('_')[-2]
-        return float(stracc)
-    except:
-        return 0.
+class WeightFile:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        w_file = file_path.split(os.sep)[-1]
+        parts = w_file.split('_')
+        if len(parts) < 4:
+            parts = w_file.split('-')
+            self.model_name = parts[0]
+        else:
+            self.model_name = parts[0]
+            if parts[1] == 'bn':
+                self.model_name += '_bn'
+            if parts[1] == 'v3':
+                self.model_name += '_v3'
+
+        self.accuracy = float(parts[-2])
 
 
 def load_best_weights(model):

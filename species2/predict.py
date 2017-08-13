@@ -12,6 +12,7 @@ from torch.autograd import Variable
 
 import settings
 import data_loader
+import utils
 from utils import create_model
 from utils import save_array, load_array
 
@@ -42,41 +43,31 @@ def ensemble(tta=False):
     w_files = glob.glob(settings.MODEL_DIR + os.sep + "*.pth")
     weights = {}
     for w_file in w_files:
-        w_file = w_file.split(os.sep)[-1]
-        acc = float(w_file.split('_')[-2])
-        model_name = w_file.split('_')[0]
-        if w_file.split('_')[1] == 'bn':
-            model_name += '_bn'
-        if w_file.split('_')[1] == 'v3':
-            model_name += '_v3'
+        weight_file = utils.WeightFile(w_file)
 
-        if model_name in weights:
-            weights[model_name].append(w_file)
-            # existing_weight_file = weights[model_name]
-            # existing_acc = float(existing_weight_file.split('_')[-2])
-            # if acc > existing_acc:
-            #     weights[model_name] = w_file
+        if weight_file.model_name in weights:
+            existing_weight_file = weights[weight_file.model_name]
+            if weight_file.accuracy > existing_weight_file.accuracy:
+                weights[weight_file.model_name] = weight_file
         else:
-            weights[model_name] = [w_file]
+            weights[weight_file.model_name] = weight_file
 
     test_set = data_loader.get_test_set()
-    for model_name, weight_files in weights.items():
-        for weight_file in weight_files:
-            full_w_file = settings.MODEL_DIR + os.sep + weight_file
-            print("using saved weights: %s" % full_w_file)
-            model = create_model(model_name, pre_trained=False)
-            model.load_state_dict(torch.load(full_w_file))
+    for model_name, weight_file in weights.items():
+        print("using saved weights: %s" % weight_file.file_path)
+        model = create_model(model_name, pre_trained=False)
+        model.load_state_dict(torch.load(weight_file.file_path))
 
-            rounds = 1
-            if tta:
-                rounds = 10
+        rounds = 1
+        if tta:
+            rounds = 10
 
-            loader = data_loader.copy_test_loader(model, test_set, tta=True)
+        loader = data_loader.copy_test_loader(model, test_set, tta=True)
 
-            for index in range(rounds):
-                pred = np.array(make_preds(model, loader))
-                preds_raw.append(pred)
-            del model
+        for index in range(rounds):
+            predictions = np.array(make_preds(model, loader))
+            preds_raw.append(predictions)
+        del model
 
     save_array(PRED_FILE_RAW, preds_raw)
     preds = np.mean(preds_raw, axis=0)
@@ -101,8 +92,8 @@ def submit(filename):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ens", action='store_true', nargs=1, help="ensemble predict")
-parser.add_argument("--tta", action='store_true', nargs=1, help="ensemble predict")
+parser.add_argument("--ens", action='store_true', help="ensemble predict")
+parser.add_argument("--tta", action='store_true', help="ensemble predict")
 parser.add_argument("--sub", action='store_true', help="generate submission file")
 
 args = parser.parse_args()
