@@ -7,14 +7,15 @@ import torch.optim as optim
 import tqdm
 from torch.autograd import Variable
 
-import report
-import settings
 import data_loader
 import models
+import report
+import settings
 from utils import save_weights, load_best_weights
 
 
-def train_model(model, criterion, optimizer, lr_schedule, max_num=2, init_lr=0.001, num_epochs=100, data_loaders=None,
+def train_model(model, criterion, optimizer, lr_schedule, max_num=2,
+                init_lr=0.001, num_epochs=100, data_loaders=None,
                 fine_tune=False, pseudo=False):
     train_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     since = time.time()
@@ -69,7 +70,8 @@ def train_model(model, criterion, optimizer, lr_schedule, max_num=2, init_lr=0.0
                     weight_label = 'pseudo'
                 else:
                     weight_label = 'train'
-                save_weights(epoch_acc, model, epoch, max_num=max_num, weight_label=weight_label)
+                save_weights(epoch_acc, model, epoch, max_num=max_num,
+                             weight_label=weight_label)
             else:
                 report.report_train(epoch_loss, epoch_acc, running_corrects)
             if phase == 'valid' and epoch_acc > best_acc:
@@ -135,7 +137,8 @@ def train(model, fine_tune, pseudo, num_epochs=100, data_sets=None):
         else:
             raise Exception('unknown model')
 
-        optimizer_ft = optim.SGD(dense_layers.parameters(), lr=init_lr, momentum=0.9)
+        optimizer_ft = optim.SGD(dense_layers.parameters(), lr=init_lr,
+                                 momentum=0.9)
         init_lr = 0.001
     else:
         optimizer_ft = optim.SGD(model.parameters(), lr=init_lr, momentum=0.9)
@@ -143,16 +146,20 @@ def train(model, fine_tune, pseudo, num_epochs=100, data_sets=None):
     max_num = 2
     if pseudo:
         pseudo_data, valid_data = data_sets
-        data_loaders = {'train': data_loader.get_pseudo_train_loader(model, pseudo_data),
-                        'valid': data_loader.get_val_loader(model, valid_data)}
+        data_loaders = {
+            'train': data_loader.get_pseudo_train_loader(model, pseudo_data),
+            'valid': data_loader.get_val_loader(model, valid_data)}
         max_num += 2
     else:
         train_data, valid_data = data_sets
-        data_loaders = {'train': data_loader.get_train_loader(model, train_data),
-                        'valid': data_loader.get_val_loader(model, valid_data)}
+        data_loaders = {
+            'train': data_loader.get_train_loader(model, train_data),
+            'valid': data_loader.get_val_loader(model, valid_data)}
 
-    model = train_model(model, criterion, optimizer_ft, lr_scheduler, max_num=max_num, init_lr=init_lr,
-                        num_epochs=num_epochs, data_loaders=data_loaders, fine_tune=fine_tune, pseudo=pseudo)
+    model = train_model(model, criterion, optimizer_ft, lr_scheduler,
+                        max_num=max_num, init_lr=init_lr,
+                        num_epochs=num_epochs, data_loaders=data_loaders,
+                        fine_tune=fine_tune, pseudo=pseudo)
     return model
 
 
@@ -184,11 +191,13 @@ if args.train:
     if model_name == '*':
         for name in settings.BATCH_SIZES:
             model = create_model(name, False)
-            train(model, False, False, num_epochs=num_epochs, data_sets=(train_set, valid_set))
+            train(model, False, False, num_epochs=num_epochs,
+                  data_sets=(train_set, valid_set))
             del model
     else:
         model = create_model(model_name, False)
-        train(model, False, False, num_epochs=num_epochs, data_sets=(train_set, valid_set))
+        train(model, False, False, num_epochs=num_epochs,
+              data_sets=(train_set, valid_set))
         del model
 if args.fine_tune:
     print('start fine tune model')
@@ -200,13 +209,15 @@ if args.fine_tune:
     if model_name == '*':
         for name in settings.BATCH_SIZES:
             model = create_model(name, False)
-            train(model, True, False, num_epochs=num_epochs, data_sets=(train_set, valid_set))
+            train(model, True, False, num_epochs=num_epochs,
+                  data_sets=(train_set, valid_set))
             del model
     else:
         model = create_model(model_name, False)
-        train(model, True, False, num_epochs=num_epochs, data_sets=(train_set, valid_set))
+        train(model, True, False, num_epochs=num_epochs,
+              data_sets=(train_set, valid_set))
         del model
-    # train_arch(model_name, True, False, None)
+        # train_arch(model_name, True, False, None)
 if args.pseudo:
     print('start training with pseudo labeling')
     model_name = args.pseudo[0]

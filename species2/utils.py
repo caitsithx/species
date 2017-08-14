@@ -53,9 +53,11 @@ def save_weights(acc, model, epoch, max_num=2, weight_label=''):
     w_files = glob.glob(os.path.join(settings.MODEL_DIR, model.name) + '*-pth')
 
     saved_weights = False
+    same_label = False
     for w_file in w_files:
         weight_file = WeightFile(w_file)
         if weight_label == weight_file.weight_label:
+            same_label = True
             if acc > weight_file.accuracy:
                 saved_weights = True
                 try:
@@ -64,7 +66,7 @@ def save_weights(acc, model, epoch, max_num=2, weight_label=''):
                     print('Failed to delete file: {}'.format(weight_file.file_path))
             break
 
-    if saved_weights or len(w_files) == 0:
+    if saved_weights or not same_label:
         torch.save(model.state_dict(), w_file_path)
         print("saved weights: %s" % w_file_path)
 

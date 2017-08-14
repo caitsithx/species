@@ -13,7 +13,7 @@ from torch.autograd import Variable
 import settings
 import data_loader
 import utils
-from utils import create_model
+from models import create_model
 from utils import save_array, load_array
 
 PRED_FILE = settings.RESULT_DIR + os.sep + 'pred_ens.dat'
