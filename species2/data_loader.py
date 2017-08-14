@@ -99,7 +99,7 @@ class NormalSet(data.Dataset):
             else:
                 split_data = df_value[split_index:]
             if utils.is_debugging():
-                split_data = df_value[:10]
+                split_data = df_value[:64]
             # print(split_data.shape)
             file_names = [None] * split_data.shape[0]
             labels = [None] * split_data.shape[0]
@@ -152,6 +152,7 @@ class CopySet(NormalSet):
         self.file_names = data_set.file_names
         self.train_data = data_set.train_data
         self.has_label = data_set.has_label
+        self.labels = data_set.labels
 
         self.images = data_set.images
 
@@ -160,13 +161,14 @@ def nothing(image):
     return image
 
 
-def randomRotate(img):
-    d = random.uniform(0, 360)
+def random_rotate(img):
+    # d = random.(0, 360)
+    d = random.randint(0, 4) * 90
     img2 = img.rotate(d, resample=Image.NEAREST)
     return img2
 
 
-def randomMaxScreen(img):
+def random_max_screen(img):
     if img.size[0] == img.size[1]:
         return img
     elif img.size[0] > img.size[1]:
@@ -179,48 +181,49 @@ def randomMaxScreen(img):
         return img.crop((x1, y1, x1 + img.size[0], y1 + img.size[0]))
 
 
+std = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
 data_transforms = {
     'train': transforms.Compose([
+        transforms.RandomSizedCrop(224),
         transforms.RandomHorizontalFlip(),
-        transforms.Lambda(lambda x: randomMaxScreen(x)),
-        transforms.Scale(317),
-        transforms.Lambda(lambda x: randomRotate(x)),
-        transforms.CenterCrop(224),
+        transforms.Lambda(lambda x: random_rotate(x)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
     ]),
     'trainv3': transforms.Compose([
-        transforms.Lambda(lambda x: randomMaxScreen(x)),
-        transforms.Scale(423),
-        transforms.Lambda(lambda x: randomRotate(x)),
-        transforms.CenterCrop(299),
+        transforms.RandomSizedCrop(299),
         transforms.RandomHorizontalFlip(),
+        transforms.Lambda(lambda x: random_rotate(x)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
     ]),
     'valid': transforms.Compose([
-        transforms.Scale(226),
+        transforms.Scale(224),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
+    ]),
+    'valid_vgg': transforms.Compose([
+        transforms.Scale(224),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        std
     ]),
     'validv3': transforms.Compose([
-        transforms.Scale(301),
-        transforms.CenterCrop(299),
+        transforms.Scale(299),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
     ]),
     'test': transforms.Compose([
-        transforms.Scale(226),
-        transforms.CenterCrop(224),
+        transforms.Scale(224),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
     ]),
     'testv3': transforms.Compose([
-        transforms.Scale(301),
-        transforms.CenterCrop(299),
+        transforms.Scale(299),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        std
     ])
 }
 
@@ -237,47 +240,61 @@ save_array(CLASSES_FILE, dset_classes)
 '''
 
 
-def get_train_loader(model, batch_size=16, shuffle=True):
-    if model.name.startswith('inception'):
-        transkey = 'trainv3'
-    else:
-        transkey = 'train'
-    if hasattr(model, 'batch_size'):
-        batch_size = model.batch_size
-    # train_v2.csv
-    print("train batch_size %d " % batch_size)
-    dset = NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
-                     transform=data_transforms[transkey])
-    dloader = torch.utils.data.DataLoader(dset, batch_size=batch_size,
-                                          shuffle=shuffle)
-    dloader.num = dset.num
-    return dloader
-
-
-def get_val_loader(model, batch_size=16, split=0.8, shuffle=True):
+def get_val_loader(model, valid_set):
     if model.name.startswith('inception'):
         transkey = 'validv3'
+    elif model.name.startswith('vgg'):
+        transkey = 'valid_vgg'
     else:
         transkey = 'valid'
     if hasattr(model, 'batch_size'):
         batch_size = model.batch_size
-    # train_v2.csv
+    else:
+        batch_size = settings.BATCH_SIZE
+        print("using default batch size!")
+    print("valid batch_size %d " % batch_size)
 
-    dset = NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv', train_data=False,
-                     transform=data_transforms[transkey], split=split)
+    dset = CopySet(valid_set, transform=data_transforms[transkey])
     dloader = torch.utils.data.DataLoader(dset, batch_size=batch_size,
-                                          shuffle=shuffle)
+                                          shuffle=False)
     dloader.num = dset.num
     return dloader
 
 
+def get_train_set():
+    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv', has_label=True, train_data=True)
+
+
+def get_valid_set():
+    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv', has_label=True, train_data=False)
+
+
 def get_test_set():
-    return NormalSet(settings.DATA_DIR + os.sep + 'sample_submission.csv', has_label=False)
+    return NormalSet(settings.DATA_DIR + os.sep + 'sample_submission.csv', has_label=False, train_data=False)
 
 
 def get_pseudo_set(pseudo_label_file):
     return PseudoLabelSet(settings.DATA_DIR + os.sep + 'sample_submission.csv',
                           settings.DATA_DIR + os.sep + pseudo_label_file)
+
+
+def get_train_loader(model, data_set):
+    if model.name.startswith('inception'):
+        transform_key = 'trainv3'
+    else:
+        transform_key = 'train'
+
+    if hasattr(model, 'batch_size'):
+        batch_size = model.batch_size
+    else:
+        batch_size = settings.BATCH_SIZE
+        print("using default batch size!")
+    print("train batch_size %d " % batch_size)
+
+    data_set = CopySet(data_set, transform=data_transforms[transform_key])
+    loader = torch.utils.data.DataLoader(data_set, batch_size=batch_size, shuffle=True)
+    loader.num = data_set.num
+    return loader
 
 
 def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=True):
