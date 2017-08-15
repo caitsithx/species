@@ -74,6 +74,7 @@ def submit(filename):
     preds_raw = []
     pred_files = glob.glob(settings.PREDICT_DIR + os.sep + '*.dat')
     for pred_file in pred_files:
+        print("loading predictions: % s" % pred_file)
         preds_raw.append(load_array(pred_file))
     preds = np.mean(preds_raw, axis=0)
 
