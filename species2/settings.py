@@ -6,7 +6,7 @@ TRAIN_DIR = DATA_DIR + os.sep + 'train'
 TEST_DIR = DATA_DIR + os.sep + 'test'
 VALID_DIR = DATA_DIR + os.sep + 'valid'
 RESULT_DIR = DATA_DIR + os.sep + 'result'
-RESULT_DIR = DATA_DIR + os.sep + 'predicts'
+PREDICT_DIR = DATA_DIR + os.sep + 'predicts'
 
 TRAIN_RESIZED_DIR = DATA_DIR + os.sep + 'train-640'
 TEST_RESIZED_DIR = DATA_DIR + os.sep + 'test-640'

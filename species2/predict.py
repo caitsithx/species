@@ -2,6 +2,7 @@ import argparse
 import os
 import time
 
+import glob
 import numpy as np
 import pandas as pd
 import torch.nn as nn
@@ -66,13 +67,16 @@ def ensemble(model_name, file_name, tta=False):
 
     preds = np.mean(preds_raw, axis=0)
 
-    save_array(settings.RESULT_DIR + os.sep + file_name, preds)
+    save_array(settings.PREDICT_DIR + os.sep + file_name, preds)
 
 
 def submit(filename):
-    # filenames = [f.split('/')[-1] for f, i in dsets.imgs]
-    # filenames = get_stage1_test_loader('res50').filenames
-    preds = load_array(PRED_FILE)
+    preds_raw = []
+    pred_files = glob.glob(settings.PREDICT_DIR + os.sep + '*.dat')
+    for pred_file in pred_files:
+        preds_raw.append(load_array(pred_file))
+    preds = np.mean(preds_raw, axis=0)
+
     print(preds[:100])
     subm_name = settings.RESULT_DIR + os.sep + filename
     df = pd.read_csv(settings.DATA_DIR + os.sep + 'sample_submission.csv')
