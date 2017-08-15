@@ -1,16 +1,16 @@
 import os
 import random
 
-import tqdm
 import numpy as np
 import pandas as pd
 import torch
 import torch.utils.data as data
+import tqdm
 from PIL import Image
 from torchvision import transforms
 
-import utils
 import settings
+import utils
 
 
 def pil_load(img_path):
@@ -42,13 +42,16 @@ class PseudoLabelSet(data.Dataset):
 
         self.data_set = []
 
-        train_set = self.add_data(df_train.values[:int(df_train.values.shape[0] * 0.7)], settings.TRAIN_DIR)
+        train_set = self.add_data(
+            df_train.values[:int(df_train.values.shape[0] * 0.7)],
+            settings.TRAIN_DIR)
         for index in range(4):
             self.data_set.extend(train_set)
 
         print("add %d train data." % len(self.data_set))
 
-        pesudo_set = self.add_data(df_pseudo.values, settings.TEST_DIR, label_threshold=0.7)
+        pesudo_set = self.add_data(df_pseudo.values, settings.TEST_DIR,
+                                   label_threshold=0.7)
         self.data_set.extend(pesudo_set)
 
         print("add %d pseudo labeling data." % len(df_pseudo.values))
@@ -106,7 +109,8 @@ class NormalSet(data.Dataset):
 
             for index, line in enumerate(split_data):
                 f, invasive = line
-                file_names[index] = os.path.join(settings.TRAIN_DIR, str(f) + '.jpg')
+                file_names[index] = os.path.join(settings.TRAIN_DIR,
+                                                 str(f) + '.jpg')
                 labels[index] = invasive
 
             self.labels = np.array(labels, dtype=np.float32)
@@ -114,7 +118,8 @@ class NormalSet(data.Dataset):
             file_names = [None] * df_train.values.shape[0]
             for index, line in enumerate(df_train.values):
                 f, invasive = line
-                file_names[index] = settings.TEST_DIR + '/' + str(int(f)) + '.jpg'
+                file_names[index] = settings.TEST_DIR + '/' + str(
+                    int(f)) + '.jpg'
                 # print(filenames[:100])
         if utils.is_debugging():
             file_names = file_names[:64]
@@ -165,8 +170,13 @@ def nothing(image):
 
 
 def random_rotate(img):
-    # d = random.(0, 360)
     d = random.randint(0, 4) * 90
+    img2 = img.rotate(d, resample=Image.NEAREST)
+    return img2
+
+
+def random_uniform_rotate(img):
+    d = random.uniform(0, 360)
     img2 = img.rotate(d, resample=Image.NEAREST)
     return img2
 
@@ -184,49 +194,67 @@ def random_max_screen(img):
         return img.crop((x1, y1, x1 + img.size[0], y1 + img.size[0]))
 
 
-std = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+image_net_std = transforms.Normalize([0.485, 0.456, 0.406],
+                                     [0.229, 0.224, 0.225])
 
 data_transforms = {
+    'train-roll': transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.Lambda(lambda x: random_max_screen(x)),
+        transforms.Scale(317),
+        transforms.Lambda(lambda x: random_uniform_rotate(x)),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        image_net_std
+    ]),
     'train': transforms.Compose([
         transforms.RandomSizedCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.Lambda(lambda x: random_rotate(x)),
         transforms.ToTensor(),
-        std
+        image_net_std
+    ]),
+    'trainv3-roll': transforms.Compose([
+        transforms.Lambda(lambda x: random_max_screen(x)),
+        transforms.Scale(423),
+        transforms.Lambda(lambda x: random_uniform_rotate(x)),
+        transforms.CenterCrop(299),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        image_net_std
     ]),
     'trainv3': transforms.Compose([
         transforms.RandomSizedCrop(299),
         transforms.RandomHorizontalFlip(),
         transforms.Lambda(lambda x: random_rotate(x)),
         transforms.ToTensor(),
-        std
+        image_net_std
     ]),
     'valid': transforms.Compose([
         transforms.Scale(224),
-        transforms.CenterCrop(224),
         transforms.ToTensor(),
-        std
+        image_net_std
     ]),
     'valid_vgg': transforms.Compose([
         transforms.Scale(224),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
-        std
+        image_net_std
     ]),
     'validv3': transforms.Compose([
         transforms.Scale(299),
         transforms.ToTensor(),
-        std
+        image_net_std
     ]),
     'test': transforms.Compose([
         transforms.Scale(224),
         transforms.ToTensor(),
-        std
+        image_net_std
     ]),
     'testv3': transforms.Compose([
         transforms.Scale(299),
         transforms.ToTensor(),
-        std
+        image_net_std
     ])
 }
 
@@ -265,15 +293,18 @@ def get_val_loader(model, valid_set):
 
 
 def get_train_set():
-    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv', has_label=True, train_data=True)
+    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
+                     has_label=True, train_data=True)
 
 
 def get_valid_set():
-    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv', has_label=True, train_data=False)
+    return NormalSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
+                     has_label=True, train_data=False)
 
 
 def get_test_set():
-    return NormalSet(settings.DATA_DIR + os.sep + 'sample_submission.csv', has_label=False, train_data=False)
+    return NormalSet(settings.DATA_DIR + os.sep + 'sample_submission.csv',
+                     has_label=False, train_data=False)
 
 
 def get_pseudo_set(pseudo_label_file):
@@ -287,6 +318,9 @@ def get_train_loader(model, data_set):
     else:
         transform_key = 'train'
 
+    if settings.TRANSFORM_KEY_SUFFIX is not None:
+        transform_key = transform_key + '-' + settings.TRANSFORM_KEY_SUFFIX
+
     if hasattr(model, 'batch_size'):
         batch_size = model.batch_size
     else:
@@ -295,23 +329,30 @@ def get_train_loader(model, data_set):
     print("train batch_size %d " % batch_size)
 
     data_set = CopySet(data_set, transform=data_transforms[transform_key])
-    loader = torch.utils.data.DataLoader(data_set, batch_size=batch_size, shuffle=True)
+    loader = torch.utils.data.DataLoader(data_set, batch_size=batch_size,
+                                         shuffle=True)
     loader.num = data_set.num
     return loader
 
 
-def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=True):
+def get_pseudo_train_loader(model, pseudo_label_file,
+                            batch_size=16,
+                            shuffle=True):
     if model.name.startswith('inception'):
-        transkey = 'trainv3'
+        transform_key = 'trainv3'
     else:
-        transkey = 'train'
+        transform_key = 'train'
+
+    if settings.TRANSFORM_KEY_SUFFIX is not None:
+        transform_key = transform_key + '-' + settings.TRANSFORM_KEY_SUFFIX
+
     if hasattr(model, 'batch_size'):
         batch_size = model.batch_size
 
     print("train batch_size %d " % batch_size)
     dset = PseudoLabelSet(settings.DATA_DIR + os.sep + 'train_labels.csv',
                           settings.RESULT_DIR + os.sep + pseudo_label_file,
-                          transform=data_transforms[transkey])
+                          transform=data_transforms[transform_key])
 
     dloader = torch.utils.data.DataLoader(dset, batch_size=batch_size,
                                           shuffle=shuffle)
@@ -319,13 +360,17 @@ def get_pseudo_train_loader(model, pseudo_label_file, batch_size=16, shuffle=Tru
     return dloader
 
 
-def copy_test_loader(model, data_set, shuffle=False, batch_size=12, tta=False):
+def get_test_loader(model, data_set, shuffle=False, batch_size=12,
+                    tta=False):
     if tta:
         print("using TTA.")
         if model.name.startswith('inception'):
             transform_key = 'trainv3'
         else:
             transform_key = 'train'
+
+        if settings.TRANSFORM_KEY_SUFFIX is not None:
+            transform_key = transform_key + '-' + settings.TRANSFORM_KEY_SUFFIX
     else:
         if model.name.startswith('inception'):
             transform_key = 'testv3'

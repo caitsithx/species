@@ -1,7 +1,8 @@
 import os
 from os import path
 
-DATA_DIR = path.expanduser('~') + os.sep + 'dl_data' + os.sep + 'invasive-species-monitoring'
+DATA_DIR = path.expanduser(
+    '~') + os.sep + 'dl_data' + os.sep + 'invasive-species-monitoring'
 TRAIN_DIR = DATA_DIR + os.sep + 'train'
 TEST_DIR = DATA_DIR + os.sep + 'test'
 VALID_DIR = DATA_DIR + os.sep + 'valid'
@@ -32,7 +33,6 @@ BATCH_SIZES = {
     'inceptionresnetv2': 8
 }
 
-
 FINE_TUNE_BATCH_SIZES = {
     "resnet34": 64,
     "resnet50": 32,
@@ -52,4 +52,4 @@ FINE_TUNE_BATCH_SIZES = {
 
 epochs = 100
 
-
+TRANSFORM_KEY_SUFFIX = 'roll'

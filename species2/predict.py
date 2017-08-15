@@ -59,7 +59,7 @@ def ensemble(model_name, file_name, tta=False):
     if tta:
         rounds = 20
 
-    loader = data_loader.copy_test_loader(model, test_set, tta=True)
+    loader = data_loader.get_test_loader(model, test_set, tta=True)
 
     for index in range(rounds):
         predictions = np.array(make_preds(model, loader))
