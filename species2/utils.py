@@ -40,9 +40,10 @@ def load_best_weights(model):
         else:
             weights[weight_file.model_name] = weight_file
 
-    if weight_file:
-        print('loading weight: {}'.format(weight_file.file_path))
-        model.load_state_dict(torch.load(weight_file.file_path))
+    if len(weights) > 0:
+        best_weight_file = weights[weight_file.model_name]
+        print('loading weight: {}'.format(best_weight_file.file_path))
+        model.load_state_dict(torch.load(best_weight_file.file_path))
 
 
 def save_weights(acc, model, epoch, max_num=2, weight_label=''):

@@ -1,19 +1,17 @@
 import argparse
-import glob
 import os
-
 import time
-import tqdm
+
 import numpy as np
 import pandas as pd
-import torch
 import torch.nn as nn
+import tqdm
 from torch.autograd import Variable
 
-import settings
 import data_loader
+import settings
+import models
 import utils
-from models import create_model
 from utils import save_array, load_array
 
 PRED_FILE = settings.RESULT_DIR + os.sep + 'pred_ens.dat'
@@ -37,41 +35,38 @@ def make_preds(net, loader):
     return preds
 
 
-def ensemble(tta=False):
+def create_model(arch):
+    print('Training {}...'.format(arch))
+    model = models.create_model(arch, fine_tune=False, pre_trained=False)
+    try:
+        utils.load_best_weights(model)
+    except:
+        print('Failed to load weights')
+    if not hasattr(model, 'max_num'):
+        model.max_num = 2
+    return model
+
+
+def ensemble(model_name, file_name, tta=False):
     preds_raw = []
 
-    w_files = glob.glob(settings.MODEL_DIR + os.sep + "*.pth")
-    weights = {}
-    for w_file in w_files:
-        weight_file = utils.WeightFile(w_file)
-
-        if weight_file.model_name in weights:
-            existing_weight_file = weights[weight_file.model_name]
-            if weight_file.accuracy > existing_weight_file.accuracy:
-                weights[weight_file.model_name] = weight_file
-        else:
-            weights[weight_file.model_name] = weight_file
+    model = create_model(model_name)
 
     test_set = data_loader.get_test_set()
-    for model_name, weight_file in weights.items():
-        print("using saved weights: %s" % weight_file.file_path)
-        model = create_model(model_name, pre_trained=False)
-        model.load_state_dict(torch.load(weight_file.file_path))
 
-        rounds = 1
-        if tta:
-            rounds = 10
+    rounds = 1
+    if tta:
+        rounds = 20
 
-        loader = data_loader.copy_test_loader(model, test_set, tta=True)
+    loader = data_loader.copy_test_loader(model, test_set, tta=True)
 
-        for index in range(rounds):
-            predictions = np.array(make_preds(model, loader))
-            preds_raw.append(predictions)
-        del model
+    for index in range(rounds):
+        predictions = np.array(make_preds(model, loader))
+        preds_raw.append(predictions)
 
-    save_array(PRED_FILE_RAW, preds_raw)
     preds = np.mean(preds_raw, axis=0)
-    save_array(PRED_FILE, preds)
+
+    save_array(settings.RESULT_DIR + os.sep + file_name, preds)
 
 
 def submit(filename):
@@ -93,7 +88,7 @@ def submit(filename):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--ens", action='store_true', help="ensemble predict")
-parser.add_argument("--tta", action='store_true', help="ensemble predict")
+parser.add_argument("--tta", nargs=1, help="tta predict")
 parser.add_argument("--sub", action='store_true', help="generate submission file")
 
 args = parser.parse_args()
@@ -101,7 +96,9 @@ if args.ens:
     ensemble()
     print('done')
 if args.tta:
-    ensemble(True)
+    model_name = args.tta[0]
+    file_name = "predicts-" + model_name + "-" + time.strftime("%Y%m%d-%H%M%S", time.gmtime()) + ".dat"
+    ensemble(model_name, file_name, True)
     print('done')
 if args.sub:
     print('generating submision file...')

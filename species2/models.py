@@ -51,7 +51,9 @@ def create_model(arch, fine_tune=False, pre_trained=True):
 
     model = model.cuda()
 
-    model.batch_size = settings.FINE_TUNE_BATCH_SIZES[arch]
+    model.batch_size = settings.BATCH_SIZES[arch]
+    if fine_tune:
+        model.batch_size = settings.FINE_TUNE_BATCH_SIZES[arch]
 
     model.name = arch
 

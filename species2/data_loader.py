@@ -116,6 +116,8 @@ class NormalSet(data.Dataset):
                 f, invasive = line
                 file_names[index] = settings.TEST_DIR + '/' + str(int(f)) + '.jpg'
                 # print(filenames[:100])
+        if utils.is_debugging():
+            file_names = file_names[:64]
         self.transform = transform
         self.num = len(file_names)
         self.file_names = file_names
@@ -152,7 +154,8 @@ class CopySet(NormalSet):
         self.file_names = data_set.file_names
         self.train_data = data_set.train_data
         self.has_label = data_set.has_label
-        self.labels = data_set.labels
+        if self.has_label:
+            self.labels = data_set.labels
 
         self.images = data_set.images
 
